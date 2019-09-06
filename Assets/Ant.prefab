@@ -2076,9 +2076,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   colony: 0
-  pheromoneDropFrequency: 50
+  pheromoneDropFrequency: 10
   speed: 10
-  range: 8
+  range: 4
+  momentumRatio: 0.6
+  targetRatio: 0.2
+  randomRatio: 0.2
   pheromones:
   - {fileID: 6029339645220091315, guid: ca2e87b23a731f042adbdbdc730b2daf, type: 3}
   - {fileID: 5157380705400961426, guid: aab891c670493d544a0234abb19ce480, type: 3}
@@ -2110,5 +2113,5 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 80
   m_CollisionDetection: 0

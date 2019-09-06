@@ -9,6 +9,13 @@ public class Ant : MonoBehaviour {
     public float speed = 10;
     public float range = 5;
 
+    public float momentumRatio = 0.5f;
+    public float targetRatio = 0.4f;
+    public float randomRatio = 0.1f;
+    private float prevMomentumRatio = 0.5f;
+    private float prevTargetRatio = 0.4f;
+    private float prevRandomRatio = 0.1f;
+
     public GameObject[] pheromones;
 
     private int pheromoneDropCount = 0;
@@ -19,8 +26,8 @@ public class Ant : MonoBehaviour {
     private Vector3 direction;
     private Rigidbody rigidbody;
 
-    private float foodCount = 1.0f;
-    private float homeCount = 0.0f;
+    private int foodCount = 0;
+    private int homeCount = 0;
 
     // Start is called before the first frame update
     void Start()
@@ -28,6 +35,9 @@ public class Ant : MonoBehaviour {
         world = GameObject.Find("Controller").GetComponent<Controller>();
         direction = new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)).normalized;
         rigidbody = GetComponent<Rigidbody>();
+        prevMomentumRatio = momentumRatio;
+        prevTargetRatio = targetRatio;
+        prevRandomRatio = randomRatio;
     }
 
     // Update is called once per frame
@@ -40,7 +50,8 @@ public class Ant : MonoBehaviour {
 
     void Move()
     {
-        transform.rotation = Quaternion.LookRotation(direction);
+        Vector3 rot = new Vector3(direction.x, 0, direction.z);
+        transform.rotation = Quaternion.LookRotation(rot);
 
         //transform.position += direction * speed;
         rigidbody.velocity = direction*speed;
@@ -48,7 +59,37 @@ public class Ant : MonoBehaviour {
 
     void UpdateDirection()
     {
-        direction = direction * 8.0f;
+        // Update the ratios if there has been a change
+        if(prevMomentumRatio != momentumRatio)
+        {
+            float oldTotal = targetRatio + randomRatio;
+            float newTotal = oldTotal - (momentumRatio - prevMomentumRatio);
+            targetRatio = (targetRatio / oldTotal) * newTotal;
+            randomRatio = (randomRatio / oldTotal) * newTotal;
+        }
+        else if (prevTargetRatio != targetRatio)
+        {
+            float oldTotal = momentumRatio + randomRatio;
+            float newTotal = oldTotal - (targetRatio - prevTargetRatio);
+            momentumRatio = (momentumRatio / oldTotal) * newTotal;
+            randomRatio = (randomRatio / oldTotal) * newTotal;
+        }
+        else if (prevRandomRatio != randomRatio)
+        {
+            float oldTotal = targetRatio + momentumRatio;
+            float newTotal = oldTotal - (randomRatio - prevRandomRatio);
+            targetRatio = (targetRatio / oldTotal) * newTotal;
+            momentumRatio = (momentumRatio / oldTotal) * newTotal;
+        }
+        prevMomentumRatio = momentumRatio;
+        prevTargetRatio = targetRatio;
+        prevRandomRatio = randomRatio;
+
+
+        // Momentum
+        direction = direction * momentumRatio;
+
+        // Target
         int topStrength = 0;
         Vector3 topDirection = Vector3.zero;
         foreach (GameObject pheromoneObj in world.GetPheromones())
@@ -66,7 +107,6 @@ public class Ant : MonoBehaviour {
                                 topStrength = pheromone.GetStrength();
                                 topDirection = (pheromoneObj.transform.position - transform.position).normalized;
                             }
-                            direction += (pheromoneObj.transform.position - transform.position).normalized* pheromone.GetStrength() / 1000000.0f;
                         }
                         break;
                     case Pheromone.PheromoneType.Home:
@@ -77,19 +117,14 @@ public class Ant : MonoBehaviour {
                                 topStrength = pheromone.GetStrength();
                                 topDirection = (pheromoneObj.transform.position - transform.position).normalized;
                             }
-                            direction += (pheromoneObj.transform.position - transform.position).normalized * pheromone.GetStrength() / 1000000.0f;
-                        }
-                        break;
-                    case Pheromone.PheromoneType.Self:
-                        if (Vector3.Distance(transform.position, pheromoneObj.transform.position) < 1)
-                        {
-                            direction += (pheromoneObj.transform.position - transform.position).normalized * pheromone.GetStrength() * 1;
                         }
                         break;
                 }
             }
         }
+        direction += topDirection * targetRatio;
 
+        /*
         foreach(GameObject ant in world.GetAnts())
         {
             if (Vector3.Distance(transform.position, ant.transform.position) < 2)
@@ -97,19 +132,32 @@ public class Ant : MonoBehaviour {
                 direction += (transform.position - ant.transform.position).normalized*2;
             }
         } 
+        */
 
-        //Top Direction
-        direction += topDirection;
 
         //Randomize slightly
-        direction += new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)) * 1.0f;
+        direction += new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)) * randomRatio;
 
-        direction.y = 0;
+        //No climbing
+        if(direction.y > 0)
+        {
+            direction.y = 0;
+        }
+
         direction.Normalize();
     }
 
     void UpdatePheromones()
     {
+        if (hasFood)
+        {
+            foodCount += 1;
+        }
+        else
+        {
+            homeCount += 1;
+        }
+
         //Pheromones
         pheromoneDropCount += 1;
         if (pheromoneDropCount >= pheromoneDropFrequency)
@@ -121,23 +169,6 @@ public class Ant : MonoBehaviour {
 
     void DropPheromones()
     {
-        if(hasFood)
-        {
-            foodCount -= 0.1f;
-            if (foodCount < 0)
-            {
-                foodCount = 0;
-            }
-        }
-        else
-        {
-            homeCount -= 0.1f;
-            if (homeCount < 0)
-            {
-                homeCount = 0;
-            }
-        }
-
 
         foreach(GameObject pheromoneObj in pheromones)
         {
@@ -150,19 +181,20 @@ public class Ant : MonoBehaviour {
                     if(hasFood)
                     {
                         drop = true;
-                        strength = pheromone.GetStartingStrength() * foodCount;
+                        strength = pheromone.GetStartingStrength() - (pheromone.dropRate * foodCount * 2);
                     }
                     break;
                 case Pheromone.PheromoneType.Home:
                     if(!hasFood)
                     {
                         drop = true;
-                        strength = pheromone.GetStartingStrength() * homeCount;
+                        strength = pheromone.GetStartingStrength() - (pheromone.dropRate * homeCount * 2);
                     }
                     break;
-                case Pheromone.PheromoneType.Self:
-                    drop = true;
-                    break;
+            }
+            if(strength < 0)
+            {
+                strength = 0;
             }
 
             if (drop)
@@ -187,14 +219,14 @@ public class Ant : MonoBehaviour {
                 {
                     collisionInfo.transform.gameObject.GetComponent<Food>().Eat();
                     hasFood = true;
-                    foodCount = 1.0f;
+                    foodCount = 0;
                 }
                 break;
             case "Home":
                 if(hasFood && collisionInfo.transform.gameObject.GetComponent<Home>().IsHomeColony(colony))
                 {
                     hasFood = false;
-                    homeCount = 1.0f;
+                    homeCount = 0;
                 }
                 break;
         }

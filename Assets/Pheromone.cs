@@ -5,7 +5,7 @@ using UnityEngine;
 public class Pheromone : MonoBehaviour
 {
 
-    public enum PheromoneType {Food,Home,Self}
+    public enum PheromoneType {Food,Home}
 
     public int startingStrength = 100;
     public int dropRate = 5;

@@ -15,6 +15,7 @@ public class Ant : MonoBehaviour {
     public float hitRatio = 0.05f;
 
     public GameObject[] pheromones;
+    private Pheromone homePheromone;
 
     private int pheromoneDropCount = 0;
 
@@ -26,6 +27,13 @@ public class Ant : MonoBehaviour {
 
     private int foodCount = 0;
     private int homeCount = 0;
+    public bool goHome = false;
+
+    public int maxLife = 1000;
+    public int life = 1000;
+
+    public bool explorer = false;
+
 
     // Start is called before the first frame update
     void Start()
@@ -33,11 +41,24 @@ public class Ant : MonoBehaviour {
         world = GameObject.Find("Controller").GetComponent<Controller>();
         direction = new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)).normalized;
         rigidbody = GetComponent<Rigidbody>();
+        homePheromone = pheromones[1].GetComponent<Pheromone>();
+        life = maxLife;
     }
 
     // Update is called once per frame
     void Update()
     {
+
+        if(!goHome && homeCount > homePheromone.GetStartingStrength()/homePheromone.dropRate/2.5f)
+        {
+            goHome = true;
+        }
+        life -= 1;
+        if(life < 0)
+        {
+            Destroy(gameObject);
+        }
+
         UpdateDirection();
         Move();
         UpdatePheromones();
@@ -71,7 +92,7 @@ public class Ant : MonoBehaviour {
                 switch (pheromone.GetPheromoneType())
                 {
                     case Pheromone.PheromoneType.Food:
-                        if (!hasFood)
+                        if (!hasFood && !goHome && !explorer)
                         {
                             if(pheromone.GetStrength() > topStrength)
                             {
@@ -81,7 +102,7 @@ public class Ant : MonoBehaviour {
                         }
                         break;
                     case Pheromone.PheromoneType.Home:
-                        if (hasFood)
+                        if (hasFood || goHome)
                         {
                             if (pheromone.GetStrength() > topStrength)
                             {
@@ -168,7 +189,7 @@ public class Ant : MonoBehaviour {
                     }
                     break;
                 case Pheromone.PheromoneType.Home:
-                    if(!hasFood)
+                    if(!hasFood && !goHome)
                     {
                         drop = true;
                         strength = pheromone.GetStartingStrength() - (pheromone.dropRate * homeCount * 2);
@@ -206,10 +227,12 @@ public class Ant : MonoBehaviour {
                 }
                 break;
             case "Home":
-                if(hasFood && collisionInfo.transform.gameObject.GetComponent<Home>().IsHomeColony(colony))
+                if(collisionInfo.transform.gameObject.GetComponent<Home>().IsHomeColony(colony))
                 {
+                    life = maxLife;
                     hasFood = false;
                     homeCount = 0;
+                    goHome = false;
                 }
                 break;
         }

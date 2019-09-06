@@ -2078,17 +2078,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   colony: 0
-  pheromoneDropFrequency: 10
+  pheromoneDropFrequency: 5
   speed: 10
-  range: 4
+  range: 8
   momentumRatio: 0.6
   targetRatio: 0.3
   randomRatio: 0.1
-  hitRatio: 0.5
+  hitRatio: 0.1
   pheromones:
   - {fileID: 6029339645220091315, guid: ca2e87b23a731f042adbdbdc730b2daf, type: 3}
   - {fileID: 5157380705400961426, guid: aab891c670493d544a0234abb19ce480, type: 3}
   hasFood: 0
+  goHome: 0
+  maxLife: 1000
+  life: 1000
 --- !u!65 &2954091752490116221
 BoxCollider:
   m_ObjectHideFlags: 0

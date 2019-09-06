@@ -8,6 +8,7 @@ TagManager:
   - Food
   - Ant
   - Home
+  - Wall
   layers:
   - Default
   - TransparentFX

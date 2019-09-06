@@ -11,10 +11,8 @@ public class Ant : MonoBehaviour {
 
     public float momentumRatio = 0.5f;
     public float targetRatio = 0.4f;
-    public float randomRatio = 0.1f;
-    private float prevMomentumRatio = 0.5f;
-    private float prevTargetRatio = 0.4f;
-    private float prevRandomRatio = 0.1f;
+    public float randomRatio = 0.05f;
+    public float hitRatio = 0.05f;
 
     public GameObject[] pheromones;
 
@@ -35,9 +33,6 @@ public class Ant : MonoBehaviour {
         world = GameObject.Find("Controller").GetComponent<Controller>();
         direction = new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)).normalized;
         rigidbody = GetComponent<Rigidbody>();
-        prevMomentumRatio = momentumRatio;
-        prevTargetRatio = targetRatio;
-        prevRandomRatio = randomRatio;
     }
 
     // Update is called once per frame
@@ -59,32 +54,8 @@ public class Ant : MonoBehaviour {
 
     void UpdateDirection()
     {
-        // Update the ratios if there has been a change
-        if(prevMomentumRatio != momentumRatio)
-        {
-            float oldTotal = targetRatio + randomRatio;
-            float newTotal = oldTotal - (momentumRatio - prevMomentumRatio);
-            targetRatio = (targetRatio / oldTotal) * newTotal;
-            randomRatio = (randomRatio / oldTotal) * newTotal;
-        }
-        else if (prevTargetRatio != targetRatio)
-        {
-            float oldTotal = momentumRatio + randomRatio;
-            float newTotal = oldTotal - (targetRatio - prevTargetRatio);
-            momentumRatio = (momentumRatio / oldTotal) * newTotal;
-            randomRatio = (randomRatio / oldTotal) * newTotal;
-        }
-        else if (prevRandomRatio != randomRatio)
-        {
-            float oldTotal = targetRatio + momentumRatio;
-            float newTotal = oldTotal - (randomRatio - prevRandomRatio);
-            targetRatio = (targetRatio / oldTotal) * newTotal;
-            momentumRatio = (momentumRatio / oldTotal) * newTotal;
-        }
-        prevMomentumRatio = momentumRatio;
-        prevTargetRatio = targetRatio;
-        prevRandomRatio = randomRatio;
 
+        Vector3 prevDirection = direction;
 
         // Momentum
         direction = direction * momentumRatio;
@@ -138,8 +109,20 @@ public class Ant : MonoBehaviour {
         //Randomize slightly
         direction += new Vector3(Random.Range(-1.0f, 1.0f), 0, Random.Range(-1.0f, 1.0f)) * randomRatio;
 
+        //Wall avoidance
+        Vector3 myPosition = transform.position;
+        RaycastHit hit;
+
+        if (Physics.Raycast(myPosition, prevDirection, out hit, range))
+        {
+            if (hit.collider.gameObject.tag == "Wall")
+            {
+                direction += (transform.position - hit.point).normalized * hitRatio;
+            }
+        }
+
         //No climbing
-        if(direction.y > 0)
+        if (direction.y > 0)
         {
             direction.y = 0;
         }
